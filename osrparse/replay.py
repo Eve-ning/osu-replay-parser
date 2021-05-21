@@ -134,12 +134,10 @@ class Replay():
 
     def _parse_play_data(self, replay_data):
         offset_end = self.offset+self.replay_length
-        if self.game_mode != GameMode.STD:
-            self.play_data = None
-        else:
-            datastring = lzma.decompress(replay_data[self.offset:offset_end], format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
-            events = [eventstring.split('|') for eventstring in datastring.split(',')]
-            self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
+
+        datastring = lzma.decompress(replay_data[self.offset:offset_end], format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
+        events = [eventstring.split('|') for eventstring in datastring.split(',')]
+        self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
         self.offset = offset_end
 
         if self.game_version >= self.LAST_FRAME_SEED_VERSION and self.play_data:
