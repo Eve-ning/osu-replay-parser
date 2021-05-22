@@ -34,7 +34,6 @@ class ManiaHitError:
             JMISS=188 - 3 * OD,
         )
 
-    @property
     def errors(self):
         hit_rep, rep_releases = self.parse_replay()
         hit_map, map_releases = self.parse_map()
@@ -136,7 +135,7 @@ class ManiaHitError:
                     rep_i += 1
                     error[k].append((rep_hit - map_hit))
                     if self.debug: self._print_status("OK", k, rep_hit, map_hit)
-                elif rep_hit > map_hit + self.judge['JMISS']:
+                elif rep_hit >= map_hit + self.judge['JMISS']:
                     # Late No Hit
                     map_i += 1
                     error[k].append(self.judge['JMISS'])
