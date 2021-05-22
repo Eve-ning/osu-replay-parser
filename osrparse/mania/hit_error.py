@@ -35,11 +35,11 @@ class ManiaHitError:
         )
 
     def errors(self):
-        hit_rep, rep_releases = self.parse_replay()
-        hit_map, map_releases = self.parse_map()
-        return self.sync(hit_map, map_releases, hit_rep, rep_releases)
+        hit_rep, rep_releases = self._parse_replay()
+        hit_map, map_releases = self._parse_map()
+        return self._sync(hit_map, map_releases, hit_rep, rep_releases)
 
-    def parse_replay(self):
+    def _parse_replay(self):
         rep_data = self.rep.play_data
 
         # Reformat data from relative offsets to absolute.
@@ -78,7 +78,7 @@ class ManiaHitError:
 
         return hit_rep, rel_rep
 
-    def parse_map(self):
+    def _parse_map(self):
         hit_map_ = [*[(h.offset, h.column) for h in self.map.notes.hits()],
                     *[(h.offset, h.column) for h in self.map.notes.holds()]]
         rel_map_ = [(int(h.tailOffset()), h.column) for h in self.map.notes.holds()]
@@ -96,7 +96,7 @@ class ManiaHitError:
 
         return hit_map, rel_map
 
-    def sync(self, hit_map, rel_map, hit_rep, rel_rep):
+    def _sync(self, hit_map, rel_map, hit_rep, rel_rep):
         hit_error = self._find_error(hit_map, hit_rep)
         rel_error = self._find_error(rel_map, rel_rep)
         return ManiaHitErrorEvents(hit_error=hit_error,
