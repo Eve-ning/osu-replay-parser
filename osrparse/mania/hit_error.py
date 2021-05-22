@@ -11,6 +11,7 @@ class ManiaHitErrorEvents:
     rel_errors: List[List[List[int]]]
     hit_map:    List[List[int]]
     rel_map:    List[List[int]]
+    ln_len_map: List[List[int]]
     hit_reps:   List[List[List[int]]]
     rel_reps:   List[List[List[int]]]
 
@@ -47,8 +48,8 @@ class ManiaHitError:
                      rel_reps=rel_reps)
         """
         hit_rep, rel_rep = self.parse_replays()
-        hit_map, rel_map = self.parse_map(self.map)
-        return self._sync(hit_map, rel_map, hit_rep, rel_rep)
+        hit_map, rel_map, ln_len_map = self.parse_map(self.map)
+        return self._sync(hit_map, rel_map, ln_len_map, hit_rep, rel_rep)
 
     def parse_replays(self) -> Tuple[List[List[List[int]]], List[List[List[int]]]]:
         """ Parses the map and returns the list of hit and release locations
@@ -114,7 +115,8 @@ class ManiaHitError:
         """
         hit_map_ = [*[(h.offset, h.column) for h in map.notes.hits()],
                     *[(h.offset, h.column) for h in map.notes.holds()]]
-        rel_map_ = [(int(h.tailOffset()), h.column) for h in map.notes.holds()]
+        rel_map_    = [(int(h.tailOffset()), h.column) for h in map.notes.holds()]
+        ln_len_map_ = [(int(h.length), h.column) for h in map.notes.holds()]
 
         hit_map = [[] for _ in range(int(map.circleSize))]
         for h in hit_map_:
@@ -124,16 +126,23 @@ class ManiaHitError:
         for h in rel_map_:
             rel_map[h[1]].append(h[0])
 
-        hit_map = [sorted(i) for i in hit_map]
-        rel_map = [sorted(i) for i in rel_map]
+        ln_len_map = [[] for _ in range(int(map.circleSize))]
+        for h in ln_len_map_:
+            ln_len_map[h[1]].append(h[0])
 
-        return hit_map, rel_map
+        hit_map    = [sorted(i) for i in hit_map]
+        rel_map    = [sorted(i) for i in rel_map]
+        ln_len_map = [sorted(i) for i in ln_len_map]
+
+        return hit_map, rel_map, ln_len_map
 
     def _sync(self,
               hit_map: List[List[int]],
               rel_map: List[List[int]],
+              ln_len_map: List[List[int]],
               hit_reps: List[List[List[int]]],
-              rel_reps: List[List[List[int]]]):
+              rel_reps: List[List[List[int]]],
+              ):
         hit_errors = self._find_error(hit_map, hit_reps)
         rel_errors = self._find_error(rel_map, rel_reps)
         return ManiaHitErrorEvents(hit_errors=hit_errors,
@@ -141,7 +150,8 @@ class ManiaHitError:
                                    hit_map=hit_map,
                                    rel_map=rel_map,
                                    hit_reps=hit_reps,
-                                   rel_reps=rel_reps)
+                                   rel_reps=rel_reps,
+                                   ln_len_map=ln_len_map)
 
     # %%
     def _find_error(self,
