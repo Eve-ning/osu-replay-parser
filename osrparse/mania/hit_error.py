@@ -98,7 +98,7 @@ class ManiaHitError:
                         # Update status to released
                         status[k] = False
 
-            if rep.mod_combination == Mod.Mirror:
+            if rep.mod_combination & Mod.Mirror:
                 hit_reps.append(list(reversed(hit_rep)))
                 rel_reps.append(list(reversed(rel_rep)))
             else:
@@ -215,8 +215,7 @@ class ManiaHitError:
     def _print_status(status, col, hit, note):
         print(f"{status}, COL: {col}, Error: {hit - note:<5}, Hit: {hit:<6}, Note: {note:<6}")
 
-    @classmethod
-    def count_error(cls, error):
+    def count_error(self, error):
         JUDGE_COUNT = dict(
             J300G=0,
             J300=0,
@@ -228,15 +227,15 @@ class ManiaHitError:
         for key_error in error:
             for error_ in key_error:
                 e = abs(error_)
-                if e <= cls.judge['J300G']:
+                if e <= self.judge['J300G']:
                     JUDGE_COUNT['J300G'] += 1
-                elif e <= cls.judge['J300']:
+                elif e <= self.judge['J300']:
                     JUDGE_COUNT['J300'] += 1
-                elif e <= cls.judge['J200']:
+                elif e <= self.judge['J200']:
                     JUDGE_COUNT['J200'] += 1
-                elif e <= cls.judge['J100']:
+                elif e <= self.judge['J100']:
                     JUDGE_COUNT['J100'] += 1
-                elif e <= cls.judge['J50']:
+                elif e <= self.judge['J50']:
                     JUDGE_COUNT['J50'] += 1
                 else:
                     JUDGE_COUNT['JMISS'] += 1
