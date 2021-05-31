@@ -143,8 +143,8 @@ class ManiaHitError:
               hit_reps: List[List[List[int]]],
               rel_reps: List[List[List[int]]],
               ):
-        hit_errors = self._find_error(hit_map, hit_reps)
-        rel_errors = self._find_error(rel_map, rel_reps)
+        hit_errors, rel_errors = self._find_error(
+            hit_map=hit_map, rel_map=rel_map, hit_reps=hit_reps, rel_reps=rel_reps)
         return ManiaHitErrorEvents(hit_errors=hit_errors,
                                    rel_errors=rel_errors,
                                    hit_map=hit_map,
@@ -153,21 +153,37 @@ class ManiaHitError:
                                    rel_reps=rel_reps,
                                    ln_len_map=ln_len_map)
 
-    # %%
     def _find_error(self,
-                    map: List[List[int]],
-                    reps: List[List[List[int]]]):
+                    hit_map: List[List[int]],
+                    rel_map: List[List[int]],
+                    hit_reps: List[List[List[int]]],
+                    rel_reps: List[List[List[int]]]):
+        """ This finds the error of the plays via simulation.
+
+        Note that releases may not sync correctly via naive simulation. That means, a
+        release of a normal note may be detected early as release for an LN if it's
+        too close.
+
+        """
         # errors is for ALL REPLAYS
-        errors = []
-        for rep in reps:
+        hit_errors = []
+        rel_errors = []
+        for hit_rep, rel_rep in zip(hit_reps, rel_reps):
             # error is for A SINGLE REPLAY
             error = [[] for _ in range(self.keys)]
             for k in range(self.keys):
-                map_k = map[k]
-                rep_k = rep[k]
+                # True for is Release
+                hit_map_k = [(i, False) for i in hit_map[k]]
+                rel_map_k = [(i, True) for i in rel_map[k]]
+                hit_rep_k = [(i, False) for i in hit_rep[k]]
+                rel_rep_k = [(i, True) for i in rel_rep[k]]
+
+                map_k = sorted([*hit_map_k, *rel_map_k], key=lambda x: x[0])
+                rep_k = sorted([*hit_rep_k, *rel_rep_k], key=lambda x: x[0])
 
                 map_i = 0
                 rep_i = 0
+
                 while True:
                     if map_i >= len(map_k):
                         # map is complete
@@ -176,40 +192,66 @@ class ManiaHitError:
                         # replay is complete
                         # If map isn't complete, we need to pad it with the missing hits
                         # This occurs if the player just doesn't hit the last few notes.
-                        for _ in range(map_i, len(map_k)):
-                            error[k].append(self.judge['JMISS'])
+                        for i in range(map_i, len(map_k)):
+                            error[k].append((self.judge['JMISS'], map_k[i][1]))
                         break
 
-                    map_hit = map_k[map_i]
-                    rep_hit = rep_k[rep_i]
+                    map_offset, map_rel = map_k[map_i]
+                    rep_offset, rep_rel = rep_k[rep_i]
 
-                    if rep_hit < map_hit - self.judge['JMISS']:
+                    # Release Condition
+                    # REP MAP
+                    #  X   X  Normal
+                    #  O   X  +REP
+                    #  X   O  +REP
+                    #  O   O  Release
+
+                    if rep_rel != map_rel:
+                        # REP REL MAP HIT
+                        # Release happened while no LNs are present
+                        # E.g.
+                        #  [ ]       [ ]=======[ ]
+                        #   ^    ^              |
+                        #  HIT  REL<------------+
+                        #  The release shouldn't interact with the next LN if it's too short
+
+                        # REP HIT MAP REL
+                        # Hit happened during LNs
+                        # E.g.
+                        #  [ ]=======[ ]       [ ]
+                        #   ^    ^              |
+                        # Probably an accidental press, just ignore it
+                        rep_i += 1
+                        continue
+
+                    if rep_offset < map_offset - self.judge['JMISS']:
                         # Early No Hit
                         rep_i += 1
-                        if self.debug: self. _print_status("--", k, rep_hit, map_hit)
-                    elif map_hit - self.judge['JMISS'] <= rep_hit < map_hit - self.judge['J50']:
+                        if self.debug: self. _print_status("--", k, rep_offset, map_offset)
+                    elif map_offset - self.judge['JMISS'] <= rep_offset < map_offset - self.judge['J50']:
                         # Early Miss
                         map_i += 1
                         rep_i += 1
-                        error[k].append((rep_hit - map_hit))
-                        if self.debug: self._print_status("EM", k, rep_hit, map_hit)
-                    elif map_hit - self.judge['J50'] <= rep_hit < map_hit + self.judge['JMISS']:
+                        error[k].append((rep_offset - map_offset, map_rel))
+                        if self.debug: self._print_status("EM", k, rep_offset, map_offset)
+                    elif map_offset - self.judge['J50'] <= rep_offset < map_offset + self.judge['JMISS']:
                         # Not too sure if we have Late Misses
                         # If the judgement counts are off, this is the reason.
                         # Valid Hit
                         map_i += 1
                         rep_i += 1
-                        error[k].append((rep_hit - map_hit))
-                        if self.debug: self._print_status("OK", k, rep_hit, map_hit)
-                    elif rep_hit >= map_hit + self.judge['JMISS']:
+                        error[k].append((rep_offset - map_offset, map_rel))
+                        if self.debug: self._print_status("OK", k, rep_offset, map_offset)
+                    elif rep_offset >= map_offset + self.judge['JMISS']:
                         # Late No Hit
                         map_i += 1
-                        error[k].append(self.judge['JMISS'])
-                        if self.debug: self._print_status("--", k, rep_hit, map_hit)
+                        error[k].append((self.judge['JMISS'], map_rel))
+                        if self.debug: self._print_status("--", k, rep_offset, map_offset)
                     else:
-                        raise Exception(f"{map_hit} unmatched with {rep_hit}")
-            errors.append(error)
-        return errors
+                        raise Exception(f"{map_offset} unmatched with {rep_offset}")
+            hit_errors.append([[e[0] for e in k if not e[1]] for k in error])
+            rel_errors.append([[e[0] for e in k if e[1]] for k in error])
+        return hit_errors, rel_errors
 
     @staticmethod
     def _print_status(status, col, hit, note):
