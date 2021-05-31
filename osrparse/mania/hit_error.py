@@ -232,20 +232,31 @@ class ManiaHitError:
                         # Early Miss
                         map_i += 1
                         rep_i += 1
-                        error[k].append((rep_offset - map_offset, map_rel))
+                        # If this is a release, we half the prior error and the current
+                        # This is how LNs in osu! work
+                        if map_rel:
+                            error[k][-1][0] /= 2
+                            error[k].append([(rep_offset - map_offset) / 2, map_rel])
+                        else:
+                            error[k].append([rep_offset - map_offset, map_rel])
                         if self.debug: self._print_status("EM", k, rep_offset, map_offset)
                     elif map_offset - self.judge['J50'] <= rep_offset < map_offset + self.judge['JMISS']:
                         # Not too sure if we have Late Misses
-                        # If the judgement counts are off, this is the reason.
                         # Valid Hit
                         map_i += 1
                         rep_i += 1
-                        error[k].append((rep_offset - map_offset, map_rel))
+                        # If this is a release, we half the prior error and the current
+                        # This is how LNs in osu! work
+                        if map_rel:
+                            error[k][-1][0] /= 2
+                            error[k].append([(rep_offset - map_offset) / 2, map_rel])
+                        else:
+                            error[k].append([rep_offset - map_offset, map_rel])
                         if self.debug: self._print_status("OK", k, rep_offset, map_offset)
                     elif rep_offset >= map_offset + self.judge['JMISS']:
                         # Late No Hit
                         map_i += 1
-                        error[k].append((self.judge['JMISS'], map_rel))
+                        error[k].append([self.judge['JMISS'], map_rel])
                         if self.debug: self._print_status("--", k, rep_offset, map_offset)
                     else:
                         raise Exception(f"{map_offset} unmatched with {rep_offset}")
