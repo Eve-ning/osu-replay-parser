@@ -3,7 +3,7 @@
 
 # osrparse, a python parser for osu! replays
 
-This is a parser for osu! replay files (.osr) as described by <https://osu.ppy.sh/wiki/en/osu%21_File_Formats/Osr_%28file_format%29>.
+This is a parser for the ``.osr`` format for osu! replay files, as described by [the wiki](https://osu.ppy.sh/wiki/en/Client/File_formats/Osr_%28file_format%29).
 
 ## Installation
 
@@ -15,54 +15,48 @@ pip install osrparse
 
 ## Documentation
 
-To parse a replay from a filepath:
+Please see the full documentation for a comprehensive guide: <https://kevin-lim.ca/osu-replay-parser/>. A quickstart follows below for the impatient, but you should read the full documentation if you are at all confused.
+
+### Quickstart
 
 ```python
-from osrparse import parse_replay_file
+from osrparse import Replay, parse_replay_data
+# parse from a path
+replay = Replay.from_path("path/to/osr.osr")
 
-# returns a Replay object
-parse_replay_file("path/to/osr.osr")
-```
+# or from an opened file object
+with open("path/to/osr.osr") as f:
+    replay = Replay.from_file(f)
 
-To parse a replay from an lzma string (such as the one returned from the `/get_replay` osu! api endpoint):
+# or from a string
+with open("path/to/osr.osr") as f:
+    replay_string = f.read()
+replay = Replay.from_string(replay_string)
 
-```python
-from osrparse import parse_replay
+# a replay has various attributes
+r = replay
+print(r.mode, r.game_version, r.beatmap_hash, r.username,
+    r.replay_hash, r.count_300, r.count_100, r.count_50, 
+    r.count_geki, r.count_miss, r.score, r.max_combo, r.perfect, 
+    r.mods, r.life_bar_graph, r.timestamp, r.replay_data, 
+    r.replay_id, r.rng_seed)
 
-# returns a Replay object that only has a `play_data` attribute
-parse_replay(lzma_string, pure_lzma=True)
-```
+# parse the replay data from api v1's /get_replay endpoint
+lzma_string = retrieve_from_api()
+replay_data = parse_replay_data(lzma_string)
+# replay_data is a list of ReplayEvents
 
-Note that if you use the `/get_replay` endpoint to retrieve a replay, you must decode the response before passing it to osrparse, as the response is encoded in base 64 by default.
+# write a replay back to a path
+replay.write_path("path/to/osr.osr")
 
-Replay objects provide the following fields:
+# or to an opened file object
+with open("path/to/osr.osr") as f:
+    replay.write_file(f)
 
-```python
-self.game_mode # GameMode enum
-self.game_version # int
-self.beatmap_hash # str
-self.player_name # str
-self.replay_hash # str
-self.number_300s # int
-self.number_100s # int
-self.number_50s # int
-self.gekis # int
-self.katus # int
-self.misses # int
-self.score # int
-self.max_combo # int
-self.is_perfect_combo # bool
-self.mod_combination # Mod enum
-self.life_bar_graph # str, currently unparsed
-self.timestamp # datetime.datetime object
-self.play_data # list[ReplayEvent]
-```
+# or to a string
+packed = replay.pack()
 
-ReplayEvent objects provide the following fields:
-
-```python
-self.time_since_previous_action # int (in milliseconds)
-self.x # x axis location
-self.y # y axis location
-self.keys_pressed # bitwise sum of keys pressed, documented in OSR format page
+# edited attributes are saved
+replay.username = "fake username"
+replay.write_path("path/to/new_osr.osr")
 ```
